@@ -103,7 +103,7 @@ else
 fi
 
 # with node installed (and NODE_DIR added to PATH), install forever js as global dependency
-status "Installing Forever.js globally via npm install -g"
-npm install --unsafe-perm --quiet -g forever 2>&1 >/dev/null | indent
+status "Installing Forever.js locally via npm install"
+npm install --unsafe-perm --quiet forever 2>&1 >/dev/null | indent
 
-status "Forever.js Installed"
+status "Forever.js Installed!"
