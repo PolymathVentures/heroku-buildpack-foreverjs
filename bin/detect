@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "Forever.js Buildpack: detect"
+exit 0

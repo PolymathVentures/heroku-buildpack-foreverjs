@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo "Forever.js Buildpack: release"

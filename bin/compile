@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -e            # fail fast
+set -o pipefail   # don't ignore exit codes when piping output
+# set -x          # enable debugging
+
+build_dir=$1
+cache_dir=$2
+env_dir=$3
+bp_dir=$(cd $(dirname $0); cd ..; pwd)
+
+# Load some convenience functions like status(), echo(), and indent()
+source $bp_dir/bin/common.sh
+
+
+status "-----> Checking Node and NPM"
+# change to the the BUILD_DIR ($1)
+cd $1
+
+
+function install_node_and_return_node_dir {
+	# Look in package.json's engines.node field for a semver range
+	semver_range=$(cat $build_dir/package.json | $bp_dir/vendor/jq -r .engines.node)
+	
+	# Resolve node version using semver.io
+	node_version=$(curl --silent --get --data-urlencode "range=${semver_range}" https://semver.io/node/resolve)
+	
+	# Recommend using semver ranges in a safe manner
+	if [ "$semver_range" == "null" ]; then
+	  protip "Specify a node version in package.json"
+	  semver_range=""
+	elif [ "$semver_range" == "*" ]; then
+	  protip "Avoid using semver ranges like '*' in engines.node"
+	elif [ ${semver_range:0:1} == ">" ]; then
+	  protip "Avoid using semver ranges starting with '>' in engines.node"
+	fi
+	
+	# Output info about requested range and resolved node version
+	if [ "$semver_range" == "" ]; then
+	  status "Defaulting to latest stable node: $node_version"
+	else
+	  status "Requested node range:  $semver_range"
+	  status "Resolved node version: $node_version"
+	fi
+	
+	# Download node from Heroku's S3 mirror of nodejs.org/dist
+	status "Downloading and installing node"
+	node_url="http://s3pository.heroku.com/node/v$node_version/node-v$node_version-linux-x64.tar.gz"
+	curl $node_url -s -o - | tar xzf - -C $build_dir
+	
+	# Move node (and npm) into ./vendor and make them executable
+	mkdir -p $build_dir/vendor
+	mv $build_dir/node-v$node_version-linux-x64 $build_dir/vendor/node
+	chmod +x $build_dir/vendor/node/bin/*
+	PATH=$build_dir/vendor/node/bin:$PATH
+
+	# Optionally bootstrap a different npm version
+	npm_engine=$(cat $build_dir/package.json | $bp_dir/vendor/jq -r .engines.npm)
+	if [ "$npm_engine" != "" ]; then
+	  if ! [[ "$npm_engine" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+	    status "Resolving npm version ${npm_engine} via semver.io..."
+	    npm_engine=$(curl --silent --get --data-urlencode "range=${npm_engine}" https://semver.herokuapp.com/npm/resolve)
+	  fi
+	  if [[ `npm --version` == "$npm_engine" ]]; then
+	    status "npm `npm --version` already installed with node"
+	  else
+	    status "Downloading and installing npm $npm_engine (replacing version `npm --version`)..."
+	    npm install --unsafe-perm --quiet -g npm@$npm_engine 2>&1 >/dev/null | indent
+	  fi
+	  if [ "${npm_engine:0:1}" -lt "2" ]; then
+	    latest_npm=$(curl --silent --get https://semver.herokuapp.com/npm/stable)
+	    protip "This version of npm ($npm_engine) has several known issues - consider upgrading to the latest release ($latest_npm)"
+	  fi
+	else
+	  status "Using default npm version: `npm --version`"
+	fi
+	
+	local __resultvar=$1
+	local NODE_DIR=$build_dir/vendor/node/bin
+	
+	if [[ "$__resultvar" ]]; then
+		eval $__resultvar="'$NODE_DIR'"
+	
+}
+
+# check for node and npm
+NODE_PATH = "$(find . -executable -name "node" | grep /bin/)"
+if [[ -z $NODE_PATH ]]; then
+	# install node and set NODE_DIR to the node/bin dir
+	install_node_and_return_node_dir NODE_DIR
+else
+	NODE_DIR=$(dirname "${NODE_PATH}")
+	
+	# test if it has NPM as well
+	NPM_PATH = "${NODE_DIR}/npm"
+	
+	if [[ ! -e $NPM_PATH ]]; then
+		# install node and set NODE_DIR to the node/bin dir
+		install_node_and_return_node_dir NODE_DIR
+	else
+		PATH=$NODE_DIR:$PATH
+	fi
+fi
+
+# with node installed (and NODE_DIR added to PATH), install forever js as global dependency
+status "Installing Forever.js globally via npm install -g"
+npm install --unsafe-perm --quiet -g forever 2>&1 >/dev/null | indent
+
+status "Forever.js Installed"
