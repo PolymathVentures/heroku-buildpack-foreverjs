@@ -84,7 +84,7 @@ function install_node_and_return_node_dir {
 }
 
 # check for node and npm
-NODE_PATH = "$(find . -executable -name "node" | grep /bin/)"
+NODE_PATH="$(find . -executable -name "node" | grep /bin/)"
 if [[ -z $NODE_PATH ]]; then
 	# install node and set NODE_DIR to the node/bin dir
 	install_node_and_return_node_dir NODE_DIR
@@ -92,7 +92,7 @@ else
 	NODE_DIR=$(dirname "${NODE_PATH}")
 	
 	# test if it has NPM as well
-	NPM_PATH = "${NODE_DIR}/npm"
+	NPM_PATH="${NODE_DIR}/npm"
 	
 	if [[ ! -e $NPM_PATH ]]; then
 		# install node and set NODE_DIR to the node/bin dir
