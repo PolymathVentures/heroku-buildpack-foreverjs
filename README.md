@@ -6,7 +6,7 @@ This buildpack will install forever js (https://github.com/foreverjs/forever) gl
 
 Creating a new Heroku instance from an Ember CLI application's parent directory:
 
-    $ heroku create --buildpack <github_url_for_this_buildpack>
+    $ heroku create --buildpack https://github.com/PolymathVentures/heroku-buildpack-foreverjs
 
     $ git push heroku master
     ...

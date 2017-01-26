@@ -79,6 +79,7 @@ function install_node_and_return_node_dir {
 	
 	if [[ "$__resultvar" ]]; then
 		eval $__resultvar="'$NODE_DIR'"
+	fi
 	
 }
 
